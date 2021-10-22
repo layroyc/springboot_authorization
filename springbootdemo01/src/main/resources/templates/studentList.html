@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<!--shiro thymeleaf标签  加入HTML 命名空间-->
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity4"
+      xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
+
+<head>
+    <meta charset="UTF-8">
+    <title>学生的列表页</title>
+    <!--<link rel="stylesheet" href="/element-ui-2.13.2.css">-->
+    <script src="/vue.js"></script>
+   <!-- <script src="/element-ui-2.13.2.js"></script>-->
+    <script src="/axios.min.js"></script>
+    <!-- 引入样式 -->
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <!-- 引入组件库 -->
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+</head>
+<body>
+    <div id="app">
+        <template>
+            <!--弹出对话框-->
+            <el-dialog title="修改" :visible.sync="dialogFormVisible">
+                <el-form :model="student">
+                    <el-form-item label="学生姓名" :label-width="formLabelWidth">
+                        <el-input v-model="student.studentName"></el-input>
+                    </el-form-item>
+
+                    <el-form-item label="学生性别" :label-width="formLabelWidth">
+                        <el-radio-group v-model="student.studentSex">
+                            <el-radio-button label="男"></el-radio-button>
+                            <el-radio-button label="女"></el-radio-button>
+                        </el-radio-group>
+                    </el-form-item>
+
+                    <el-form-item label="学生手机号" :label-width="formLabelWidth">
+                        <el-input v-model="student.studentPhone"></el-input>
+                    </el-form-item>
+
+                    <el-form-item label="学生身份证" :label-width="formLabelWidth">
+                        <el-input v-model="student.studentCardId"></el-input>
+                    </el-form-item>
+
+                    <el-form-item label="学生地址" :label-width="formLabelWidth">
+                        <el-input v-model="student.studentAddress"></el-input>
+                    </el-form-item>
+
+                    <el-form-item label="学生入学时间" :label-width="formLabelWidth">
+                        <el-input v-model="student.studentComeDate"></el-input>
+                    </el-form-item>
+
+
+                </el-form>
+                <div slot="footer" class="dialog-footer">
+                    <el-button @click="dialogFormVisible = false">取 消</el-button>
+                    <el-button type="primary" @click="dialogFormVisible = false">确 定</el-button>
+                </div>
+            </el-dialog>
+
+        <div>
+            <el-select v-model="student.studentSex" placeholder="请选择">
+                <el-option
+                        v-for="item in options"
+                        :key="item.value"
+                        :label="item.label"
+                        :value="item.value">
+                </el-option>
+            </el-select>
+
+            <el-input
+                    placeholder="请输入内容"
+                    v-model="student.studentName"
+                    style="width: 20%">
+            </el-input>
+
+            <!--{{student.studentSex}}-->
+            <el-button type="primary" @click="searchBtn">搜&nbsp;&nbsp;索</el-button>
+
+        </div>
+        <div>
+            <!--<el-button type="success" @click="addBtn">增&nbsp;&nbsp;加</el-button>-->
+            <shiro:hasRole name="人事经理"> <el-button type="success"  @click="addBtn">增&nbsp;&nbsp;加</el-button> </shiro:hasRole>
+        </div>
+
+            <div>
+            <el-table
+                    :data="tableData"
+                    style="width: 100%">
+                <el-table-column
+                        prop="studentId"
+                        label="学号"
+                        width="180">
+                </el-table-column>
+                <el-table-column
+                        prop="studentName"
+                        label="学生姓名"
+                        width="180">
+                </el-table-column>
+                <el-table-column
+                        prop="studentSex"
+                        label="学生性别"
+                        width="180"
+                :formatter="sexf">
+                </el-table-column>
+                <el-table-column
+                        prop="studentPhone"
+                        label="学生手机号"
+                        width="180">
+                </el-table-column>
+
+                <el-table-column
+                        prop="studentCardId"
+                        label="身份证号"
+                        width="180">
+                </el-table-column>
+                <el-table-column
+                        prop="studentAddress"
+                        label="学生地址"
+                        width="220">
+                </el-table-column>
+                <el-table-column
+                        prop="studentComeDate"
+                        label="学生入学时间"
+                        width="220">
+                </el-table-column>
+
+                <el-table-column label="操作">
+                    <template slot-scope="scope">
+                        <el-button
+                                size="mini"
+                                @click="handleEdit(scope.$index, scope.row)">编辑</el-button>
+                        <el-button
+                                size="mini"
+                                type="danger"
+                                @click="handleDelete(scope.$index, scope.row)">删除</el-button>
+                    </template>
+                </el-table-column>
+
+            </el-table>
+            </div>
+                <!--:page-size每页的条数-->
+                <!--:pager-count 设置最大页数按钮数-->
+                <!--使用了size-change和current-change事件来处理页码大小和当前页变动时候触发的事件-->
+                <!--:current-page="currentPage" 当前页-->
+                <div class="block">
+                    <span class="demonstration">分页完整功能</span>
+                    <el-pagination
+                            @size-change="handleSizeChange"
+                            @current-change="handleCurrentChange"
+                            :current-page="currentPage"
+                            :page-sizes="[6, 12, 18, 24]"
+                            :page-size="6"
+                            layout="total, sizes, prev, pager, next, jumper"
+                            :total="total">
+                    </el-pagination>
+                </div>
+        </template>
+    </div>
+
+<script>
+    var vm = new Vue({
+        el:'#app',
+        data:{
+            tableData: [],
+            currentPage: 1,
+            page:1,
+            limit:6,
+            total:0,
+            input: '',
+            options: [{
+                value: '1',
+                label: '男生'
+            }, {
+                value: '2',
+                label: '女生'
+            }],
+            student:{
+                studentName:'',
+                studentSex:'',
+                studentComeDate:''
+            },
+            //true是可见的，false为不可见的
+            dialogFormVisible:false,
+            //宽度
+            formLabelWidth:'100px'
+        },
+        methods:{
+            //搜索框的提交
+            searchBtn:function(){
+                console.log("发送axios...到后台")
+                this.loadTable(this.page,this.limit);
+            },
+            //增加的提交
+            addBtn:function(){
+                alert("执行增加的方法")
+            },
+            //编辑
+            handleEdit(index, row) {
+                console.log(index, row);
+                // 第一个是索引， 第二个 数据！！！
+                // 点击后，应当 弹出一个编辑 弹出框
+                this.dialogFormVisible=true;
+                //弹出框未回显数据 把数据赋值给这个student
+                this.student=row;
+            },
+            //删除
+            handleDelete(index, row) {
+                console.log(index, row);
+            },
+            /*   第一种方式
+            sexf: function( row, column) {
+                return row.studentSex == '1' ? "男"
+                    : row.studentSex == '2' ? "女"
+                        : "无";
+            },*/
+            /*第二种方式*/
+            sexf: function( row, index) {
+                if (row.studentSex == 1) {
+                    return "男";
+                } else {
+                    return "女";
+                }
+            },
+            handleSizeChange(val) {
+                console.log(`每页 ${val} 条`);
+                this.loadTable(this.page,val)
+            },
+            handleCurrentChange(val) {
+                console.log(`当前页: ${val}`);
+                this.loadTable(val,this.limit)
+            },
+            loadTable:function (page,limit) {
+                //页面一加载，就访问url  /student/selectAll
+                axios.get("/student/selectPageAll",{
+                    params:{
+                        page:page,
+                        limit:limit,
+                        //获取后台的数据
+                        studentSex:this.student.studentSex,
+                        studentName:this.student.studentName
+                    }
+                }).then(res=>{
+                    console.log(res)
+                    //把json数组 赋值给 tableDate
+                    this.tableData=res.data.data.list;
+                    this.total=res.data.data.total;
+                });
+            }
+        },
+        created(){
+            //调用方法
+            this.loadTable(this.page,this.limit);
+        }
+       /* created:function () {
+            //页面一加载，就访问url  /student/selectAll
+            axios.get("/student/selectPageAll",{
+                params:{
+                    page:page,
+                    limit:limit
+                }
+            }).then(res=>{
+                console.log(res)
+                //把json数组 赋值给 tableDate
+                this.tableData=res.data.data
+            });
+        }*/
+    });
+</script>
+
+</body>
+</html>
